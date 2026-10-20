@@ -27,7 +27,12 @@ def fix_youtube_url(url: str) -> str:
     """Turn watch?v=...&list=... into a playlist URL when asked to."""
     query = parse_qs(urlparse(url).query)
     if "list" in query and st.session_state.get("whole_playlist", True):
-        return f"https://www.youtube.com/playlist?list={query['list'][0]}"
+        list_id = query["list"][0]
+        # "RD..." lists are auto-generated Mixes: YouTube refuses them as
+        # playlist?list= URLs, so keep the original watch URL instead.
+        if list_id.startswith("RD"):
+            return url
+        return f"https://www.youtube.com/playlist?list={list_id}"
     return url
 
 
