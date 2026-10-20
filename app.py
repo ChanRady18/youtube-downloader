@@ -180,6 +180,10 @@ with st.sidebar:
         st.error("ffmpeg not found — MP3 conversion and HD merging need it.")
     else:
         st.success("ffmpeg detected ✓")
+    if shutil.which("deno") is None:
+        st.warning("Deno not found — YouTube downloads may fail with 403.")
+    else:
+        st.success("Deno detected ✓")
 
 # ---------------------------------------------------------------- header + fetch
 st.title("🎵 YouTube Playlist / Video Downloader")
