@@ -86,12 +86,35 @@ def fetch_videos(url: str, cookie_path: str | None) -> tuple[str, list[dict]]:
     return title, videos
 
 
+class _ErrorLog:
+    """Collects yt-dlp's own error/warning text so we can show the real reason."""
+
+    def __init__(self):
+        self.lines: list[str] = []
+
+    def debug(self, msg):
+        pass
+
+    def info(self, msg):
+        pass
+
+    def warning(self, msg):
+        self.lines.append(str(msg))
+
+    def error(self, msg):
+        self.lines.append(str(msg))
+
+
 def download_one(url: str, out_dir: str, fmt: str, quality: str, cookie_path, hook):
+    log = _ErrorLog()
     opts = base_opts(cookie_path) | {
         "outtmpl": os.path.join(out_dir, "%(title)s.%(ext)s"),
         "progress_hooks": [hook],
         "noplaylist": True,
         "restrictfilenames": False,
+        "ignoreerrors": False,  # raise, so the real reason reaches the UI
+        "no_warnings": False,
+        "logger": log,
     }
     if fmt == "MP3 (audio)":
         opts |= {
@@ -109,8 +132,12 @@ def download_one(url: str, out_dir: str, fmt: str, quality: str, cookie_path, ho
             "format": f"bv*[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}][ext=mp4]/bv*[height<={height}]+ba/b",
             "merge_output_format": "mp4",
         }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        return ydl.download([url])
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.download([url])
+    except Exception as e:  # noqa: BLE001
+        detail = log.lines[-1] if log.lines else str(e)
+        raise RuntimeError(re.sub(r"\x1b\[[0-9;]*m", "", detail)) from e
 
 
 # ---------------------------------------------------------------- state
